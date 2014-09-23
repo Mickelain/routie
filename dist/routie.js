@@ -5,14 +5,27 @@
  * copyright Greg Allen 2013
  * MIT License
 */
-(function(w) {
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define(function () {
+            // Also create a global in case some scripts
+            // that are loaded still are looking for
+            // a global even when an AMD loader is in use.
+            return (root.amdWebGlobal = factory(window));
+        });
+    } else {
+        // Browser globals
+        root.amdWebGlobal = factory(window);
+    }
+}(this, function(w) {
 
-  var routes = [];
-  var map = {};
-  var reference = "routie";
-  var oldReference = w[reference];
+    var routes = [];
+    var map = {};
+    var reference = "routie";
+    var oldReference = w[reference];
 
-  var Route = function(path, name) {
+    var Route = function(path, name) {
     this.name = name;
     this.path = path;
     this.keys = [];
@@ -20,13 +33,13 @@
     this.params = {};
     this.regex = pathToRegexp(this.path, this.keys, false, false);
 
-  };
+    };
 
-  Route.prototype.addHandler = function(fn) {
+    Route.prototype.addHandler = function(fn) {
     this.fns.push(fn);
-  };
+    };
 
-  Route.prototype.removeHandler = function(fn) {
+    Route.prototype.removeHandler = function(fn) {
     for (var i = 0, c = this.fns.length; i < c; i++) {
       var f = this.fns[i];
       if (fn == f) {
@@ -34,15 +47,15 @@
         return;
       }
     }
-  };
+    };
 
-  Route.prototype.run = function(params) {
+    Route.prototype.run = function(params) {
     for (var i = 0, c = this.fns.length; i < c; i++) {
       this.fns[i].apply(this, params);
     }
-  };
+    };
 
-  Route.prototype.match = function(path, params){
+    Route.prototype.match = function(path, params){
     var m = this.regex.exec(path);
 
     if (!m) return false;
@@ -60,9 +73,9 @@
     }
 
     return true;
-  };
+    };
 
-  Route.prototype.toURL = function(params) {
+    Route.prototype.toURL = function(params) {
     var path = this.path;
     for (var param in params) {
       path = path.replace('/:'+param, '/'+params[param]);
@@ -72,9 +85,9 @@
       throw new Error('missing parameters for url: '+path);
     }
     return path;
-  };
+    };
 
-  var pathToRegexp = function(path, keys, sensitive, strict) {
+    var pathToRegexp = function(path, keys, sensitive, strict) {
     if (path instanceof RegExp) return path;
     if (path instanceof Array) path = '(' + path.join('|') + ')';
     path = path
@@ -90,9 +103,9 @@
       .replace(/__plus__/g, '(.+)')
       .replace(/\*/g, '(.*)');
     return new RegExp('^' + path + '$', sensitive ? '' : 'i');
-  };
+    };
 
-  var addHandler = function(path, fn) {
+    var addHandler = function(path, fn) {
     var s = path.split(' ');
     var name = (s.length == 2) ? s[0] : null;
     path = (s.length == 2) ? s[1] : s[0];
@@ -102,9 +115,9 @@
       routes.push(map[path]);
     }
     map[path].addHandler(fn);
-  };
+    };
 
-  var routie = function(path, fn) {
+    var routie = function(path, fn) {
     if (typeof fn == 'function') {
       addHandler(path, fn);
       routie.reload();
@@ -116,30 +129,30 @@
     } else if (typeof fn === 'undefined') {
       routie.navigate(path);
     }
-  };
+    };
 
-  routie.lookup = function(name, obj) {
+    routie.lookup = function(name, obj) {
     for (var i = 0, c = routes.length; i < c; i++) {
       var route = routes[i];
       if (route.name == name) {
         return route.toURL(obj);
       }
     }
-  };
+    };
 
-  routie.remove = function(path, fn) {
+    routie.remove = function(path, fn) {
     var route = map[path];
     if (!route)
       return;
     route.removeHandler(fn);
-  };
+    };
 
-  routie.removeAll = function() {
+    routie.removeAll = function() {
     map = {};
     routes = [];
-  };
+    };
 
-  routie.navigate = function(path, options) {
+    routie.navigate = function(path, options) {
     options = options || {};
     var silent = options.silent || false;
 
@@ -156,27 +169,27 @@
       }
 
     }, 1);
-  };
+    };
 
-  routie.noConflict = function() {
+    routie.noConflict = function() {
     w[reference] = oldReference;
     return routie;
-  };
+    };
 
-  var getHash = function() {
+    var getHash = function() {
     return window.location.hash.substring(1);
-  };
+    };
 
-  var checkRoute = function(hash, route) {
+    var checkRoute = function(hash, route) {
     var params = [];
     if (route.match(hash, params)) {
       route.run(params);
       return true;
     }
     return false;
-  };
+    };
 
-  var hashChanged = routie.reload = function() {
+    var hashChanged = routie.reload = function() {
     var hash = getHash();
     for (var i = 0, c = routes.length; i < c; i++) {
       var route = routes[i];
@@ -184,25 +197,26 @@
         return;
       }
     }
-  };
+    };
 
-  var addListener = function() {
+    var addListener = function() {
     if (w.addEventListener) {
       w.addEventListener('hashchange', hashChanged, false);
     } else {
       w.attachEvent('onhashchange', hashChanged);
     }
-  };
+    };
 
-  var removeListener = function() {
+    var removeListener = function() {
     if (w.removeEventListener) {
       w.removeEventListener('hashchange', hashChanged);
     } else {
       w.detachEvent('onhashchange', hashChanged);
     }
-  };
-  addListener();
-
-  w[reference] = routie;
-   
-})(window);
+    };
+    addListener();
+       
+    // attach properties to the exports object to define
+    // the exported module properties.
+    return routie
+}));
